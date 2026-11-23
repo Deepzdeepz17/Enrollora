@@ -1,0 +1,95 @@
+
+<div class="cancellation-page">
+  <div class="page-header">
+    <div>
+      <span class="eyebrow">ENROLLMENT MANAGEMENT</span>
+      <h1>Cancellation Requests</h1>
+      <p>Review and manage student cancellation requests.</p>
+    </div>
+
+    <button class="refresh-btn" (click)="loadRequests()">
+      Refresh
+    </button>
+  </div>
+
+  @if (successMessage) {
+    <div class="success-message">{{ successMessage }}</div>
+  }
+
+  @if (errorMessage) {
+    <div class="error-message">{{ errorMessage }}</div>
+  }
+
+  @if (isLoading) {
+    <div class="state-card">
+      Loading cancellation requests...
+    </div>
+  } @else if (requests.length === 0) {
+    <div class="state-card">
+      <h3>No cancellation requests found</h3>
+      <p>Student cancellation requests will appear here.</p>
+    </div>
+  } @else {
+    <div class="table-card">
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Course</th>
+              <th>Reason</th>
+              <th>Requested Date</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            @for (request of requests; track request.cancellationRequestId) {
+              <tr>
+                <td>
+                  <strong>{{ request.studentName }}</strong>
+                  <small>{{ request.studentEmail }}</small>
+                </td>
+
+                <td>{{ request.courseName }}</td>
+
+                <td>{{ request.reason }}</td>
+
+                <td>{{ request.requestedAt | date:'dd MMM yyyy' }}</td>
+
+                <td>
+                  <span class="status-badge">
+                    {{ getStatus(request.status) }}
+                  </span>
+                </td>
+
+                <td>
+                  @if (request.status === 0) {
+                    <button
+                      class="approve-btn"
+                      [disabled]="isReviewing"
+                      (click)="reviewRequest(request.cancellationRequestId, true)"
+                    >
+                      Approve
+                    </button>
+
+                    <button
+                      class="reject-btn"
+                      [disabled]="isReviewing"
+                      (click)="reviewRequest(request.cancellationRequestId, false)"
+                    >
+                      Reject
+                    </button>
+                  } @else {
+                    <span>Reviewed</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+</div>

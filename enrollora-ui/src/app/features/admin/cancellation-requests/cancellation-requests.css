@@ -1,0 +1,95 @@
+
+.page-container {
+  padding: 30px;
+  color: #24163c;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.page-header h2 {
+  font-size: 27px;
+  margin-bottom: 8px;
+}
+
+.page-header p {
+  color: #888;
+}
+
+.refresh-btn {
+  background: white;
+  border: 1px solid #ff6565;
+  color: #ff5555;
+  padding: 11px 20px;
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.table-container {
+  background: white;
+  padding: 22px;
+  border-radius: 14px;
+  overflow-x: auto;
+  box-shadow: 0 3px 15px rgba(0,0,0,0.05);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  padding: 16px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+th {
+  background: #faf8fc;
+  color: #71647f;
+}
+
+.status {
+  background: #fff1d6;
+  color: #a66b00;
+  padding: 6px 12px;
+  border-radius: 20px;
+}
+
+.approve-btn, .reject-btn {
+  padding: 9px 13px;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+  margin: 3px;
+}
+
+.approve-btn {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.reject-btn {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.message {
+  padding: 35px;
+  text-align: center;
+  color: #888;
+}
+
+.error {
+  color: #dc2626;
+  margin-bottom: 15px;
+}
+
+.success {
+  color: #15803d;
+  margin-bottom: 15px;
+}

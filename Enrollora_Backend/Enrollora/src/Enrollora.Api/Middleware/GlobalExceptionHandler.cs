@@ -1,3 +1,4 @@
+
 using System.Net;
 using System.Text.Json;
 
@@ -19,11 +20,11 @@ public sealed class GlobalExceptionHandler(
 
             var (status, title) = exception switch
             {
-                KeyNotFoundException => (StatusCodes.Status404NotFound, "Resource not found"),
-                UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, "Unauthorized"),
-                ArgumentException => (StatusCodes.Status400BadRequest, "Invalid request"),
-                InvalidOperationException => (StatusCodes.Status400BadRequest, "Operation could not be completed"),
-                _ => (StatusCodes.Status500InternalServerError, "An unexpected error occurred")
+                KeyNotFoundException => (404, "Resource not found"),
+                UnauthorizedAccessException => (401, "Unauthorized"),
+                ArgumentException => (400, "Invalid request"),
+                InvalidOperationException => (400, "Operation could not be completed"),
+                _ => (500, "An unexpected error occurred")
             };
 
             context.Response.Clear();
@@ -35,13 +36,12 @@ public sealed class GlobalExceptionHandler(
                 type = "about:blank",
                 title,
                 status,
-                detail = status == (int)HttpStatusCode.InternalServerError
-                    ? "Please contact the system administrator."
-                    : exception.Message,
+                detail = exception.ToString(),
                 traceId = context.TraceIdentifier
             };
 
-            await context.Response.WriteAsync(JsonSerializer.Serialize(payload));
+            await context.Response.WriteAsync(
+                JsonSerializer.Serialize(payload));
         }
     }
 }

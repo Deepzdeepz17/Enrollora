@@ -13,54 +13,65 @@ public sealed class EnrollmentService(
     IRepository<Student> students,
     IRepository<Course> courses) : IEnrollmentService
 {
+    // Get all enrollments (Admin)
     public Task<PagedResult<EnrollmentResponse>> GetAllAsync(
-        EnrollmentQuery query, CancellationToken ct) =>
-        GetPageAsync(
-            enrollments.Query()
-                .Include(x => x.Student)
-                .Include(x => x.Course),
-            query, ct);
-
-    // Get enrollments of the logged-in student
-    public async Task<PagedResult<EnrollmentResponse>> GetMineAsync(
-        int studentId, EnrollmentQuery query, CancellationToken ct)
+        EnrollmentQuery query,
+        CancellationToken ct)
     {
-        Console.WriteLine("Student ID received: " + studentId);
+        var enrollmentQuery = enrollments.Query()
+            .Include(x => x.Student)
+            .Include(x => x.Course);
 
+        return GetPageAsync(enrollmentQuery, query, ct);
+    }
+
+    // Get enrollments of logged-in student
+    public Task<PagedResult<EnrollmentResponse>> GetMineAsync(
+        int studentId,
+        EnrollmentQuery query,
+        CancellationToken ct)
+    {
         var enrollmentQuery = enrollments.Query()
             .Include(x => x.Student)
             .Include(x => x.Course)
             .Where(x => x.StudentId == studentId);
 
-        Console.WriteLine("Enrollment query created");
-
-        var result = await GetPageAsync(enrollmentQuery, query, ct);
-
-        Console.WriteLine("Enrollment data loaded successfully");
-
-        return result;
+        return GetPageAsync(enrollmentQuery, query, ct);
     }
 
+    // Get enrollments for a particular student (Admin)
     public Task<PagedResult<EnrollmentResponse>> GetForStudentAsync(
-        int studentId, EnrollmentQuery query, CancellationToken ct) =>
-        GetPageAsync(
-            enrollments.Query()
-                .Include(x => x.Student)
-                .Include(x => x.Course)
-                .Where(x => x.StudentId == studentId),
-            query, ct);
+        int studentId,
+        EnrollmentQuery query,
+        CancellationToken ct)
+    {
+        var enrollmentQuery = enrollments.Query()
+            .Include(x => x.Student)
+            .Include(x => x.Course)
+            .Where(x => x.StudentId == studentId);
 
+        return GetPageAsync(enrollmentQuery, query, ct);
+    }
+
+    // Get enrollments for a particular course (Admin)
     public Task<PagedResult<EnrollmentResponse>> GetForCourseAsync(
-        int courseId, EnrollmentQuery query, CancellationToken ct) =>
-        GetPageAsync(
-            enrollments.Query()
-                .Include(x => x.Student)
-                .Include(x => x.Course)
-                .Where(x => x.CourseId == courseId),
-            query, ct);
+        int courseId,
+        EnrollmentQuery query,
+        CancellationToken ct)
+    {
+        var enrollmentQuery = enrollments.Query()
+            .Include(x => x.Student)
+            .Include(x => x.Course)
+            .Where(x => x.CourseId == courseId);
 
+        return GetPageAsync(enrollmentQuery, query, ct);
+    }
+
+    // Create a new enrollment
     public async Task<EnrollmentResponse> CreateAsync(
-        int studentId, int courseId, CancellationToken ct)
+        int studentId,
+        int courseId,
+        CancellationToken ct)
     {
         await using var transaction =
             await db.Database.BeginTransactionAsync(
@@ -71,32 +82,45 @@ public sealed class EnrollmentService(
             ?? throw new KeyNotFoundException("Student was not found.");
 
         if (student.Status != StudentStatus.Approved)
+        {
             throw new InvalidOperationException(
                 "Only approved students can enroll.");
+        }
 
         var course = await courses.Query(true)
             .FirstOrDefaultAsync(x => x.CourseId == courseId, ct)
             ?? throw new KeyNotFoundException("Course was not found.");
 
         if (!course.IsActive)
+        {
             throw new InvalidOperationException(
                 "This course is not available for enrollment.");
+        }
 
-        if (await enrollments.Query().AnyAsync(
-            x => x.StudentId == studentId &&
-                 x.CourseId == courseId &&
-                 x.Status == EnrollmentStatus.Active, ct))
+        bool alreadyEnrolled = await enrollments.Query()
+            .AnyAsync(
+                x => x.StudentId == studentId &&
+                     x.CourseId == courseId &&
+                     x.Status == EnrollmentStatus.Active,
+                ct);
+
+        if (alreadyEnrolled)
+        {
             throw new InvalidOperationException(
                 "You already have an active enrollment in this course.");
+        }
 
         var activeCount = await enrollments.Query()
             .CountAsync(
                 x => x.CourseId == courseId &&
-                     x.Status == EnrollmentStatus.Active, ct);
+                     x.Status == EnrollmentStatus.Active,
+                ct);
 
         if (activeCount >= course.Capacity)
+        {
             throw new InvalidOperationException(
                 "This course has reached its enrollment capacity.");
+        }
 
         var enrollment = new Enrollment
         {
@@ -122,6 +146,7 @@ public sealed class EnrollmentService(
             enrollment.Status);
     }
 
+    // Apply filters, sorting and pagination
     private async Task<PagedResult<EnrollmentResponse>> GetPageAsync(
         IQueryable<Enrollment> q,
         EnrollmentQuery query,
@@ -139,16 +164,24 @@ public sealed class EnrollmentService(
         }
 
         if (query.CourseId.HasValue)
+        {
             q = q.Where(x => x.CourseId == query.CourseId);
+        }
 
         if (query.Status.HasValue)
+        {
             q = q.Where(x => x.Status == query.Status);
+        }
 
         if (query.FromDate.HasValue)
+        {
             q = q.Where(x => x.EnrolledAt >= query.FromDate);
+        }
 
         if (query.ToDate.HasValue)
+        {
             q = q.Where(x => x.EnrolledAt <= query.ToDate);
+        }
 
         q = query.SortBy?.ToLowerInvariant() switch
         {

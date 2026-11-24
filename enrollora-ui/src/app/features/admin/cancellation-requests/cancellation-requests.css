@@ -1,40 +1,26 @@
-
-.page-container {
-  padding: 30px;
-  color: #24163c;
+.cancellation-page {
+  padding: 24px;
 }
 
 .page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 25px;
+  margin-bottom: 24px;
 }
 
-.page-header h2 {
-  font-size: 27px;
-  margin-bottom: 8px;
+.eyebrow {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
 }
 
-.page-header p {
-  color: #888;
+.page-header h1 {
+  margin: 8px 0;
 }
 
-.refresh-btn {
-  background: white;
-  border: 1px solid #ff6565;
-  color: #ff5555;
-  padding: 11px 20px;
-  border-radius: 9px;
-  cursor: pointer;
-}
-
-.table-container {
-  background: white;
-  padding: 22px;
-  border-radius: 14px;
+.table-card {
   overflow-x: auto;
-  box-shadow: 0 3px 15px rgba(0,0,0,0.05);
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
 }
 
 table {
@@ -43,53 +29,64 @@ table {
 }
 
 th, td {
-  padding: 16px;
+  padding: 14px;
   text-align: left;
-  border-bottom: 1px solid #eee;
+  vertical-align: top;
+  border-bottom: 1px solid #e2e8f0;
 }
 
-th {
-  background: #faf8fc;
-  color: #71647f;
+td small {
+  display: block;
+  margin-top: 4px;
+  color: #64748b;
 }
 
-.status {
-  background: #fff1d6;
-  color: #a66b00;
-  padding: 6px 12px;
+textarea {
+  min-width: 140px;
+  padding: 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 6px 10px;
   border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pending { background: #fef3c7; color: #92400e; }
+.approved { background: #dcfce7; color: #166534; }
+.rejected { background: #fee2e2; color: #991b1b; }
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
 }
 
 .approve-btn, .reject-btn {
-  padding: 9px 13px;
-  border: none;
-  border-radius: 7px;
+  border: 0;
+  border-radius: 6px;
+  padding: 8px 12px;
   cursor: pointer;
-  margin: 3px;
 }
 
 .approve-btn {
-  background: #dcfce7;
-  color: #15803d;
+  background: #15803d;
+  color: white;
 }
 
 .reject-btn {
-  background: #fee2e2;
-  color: #dc2626;
+  background: #dc2626;
+  color: white;
 }
 
-.message {
-  padding: 35px;
-  text-align: center;
-  color: #888;
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-.error {
-  color: #dc2626;
-  margin-bottom: 15px;
-}
-
-.success {
-  color: #15803d;
-  margin-bottom: 15px;
-}
+.success-message { color: #15803d; margin-bottom: 16px; }
+.error-message { color: #b91c1c; margin-bottom: 16px; }
+.empty-state { padding: 40px; text-align: center; }

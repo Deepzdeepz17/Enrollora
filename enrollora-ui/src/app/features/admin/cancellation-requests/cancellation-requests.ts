@@ -1,86 +1,98 @@
-
-import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpErrorResponse } from '@angular/common/http';
+import { Component, OnInit, inject, signal } from '@angular/core';
+
+import { CancellationRequestService } from '../../enrollments/cancellation-req.service';
+import { CancellationResponse } from '../../enrollments/cancellation-req.model';
 
 @Component({
-  selector: 'app-cancellation-requests',
+  selector: 'app-admin-cancellation-requests',
   standalone: true,
   imports: [CommonModule],
   templateUrl: './cancellation-requests.html',
-  styleUrl: './cancellation-requests.css'
+  styleUrl: './cancellation-requests.css',
 })
-export class CancellationRequests implements OnInit {
+export class AdminCancellationRequests implements OnInit {
+  private readonly service = inject(CancellationRequestService);
 
-  private apiUrl = 'https://localhost:52546/api/cancellation-requests';
-
-  requests: any[] = [];
-  loading = false;
-  errorMessage = '';
-  successMessage = '';
-
-  constructor(private http: HttpClient) {}
+  requests = signal<CancellationResponse[]>([]);
+  isLoading = signal(false);
+  errorMessage = signal('');
+  actionMessage = signal('');
+  adminRemarks = signal<Record<number, string>>({});
+  processingId = signal<number | null>(null);
 
   ngOnInit(): void {
     this.loadRequests();
   }
 
-  get headers(): HttpHeaders {
-    return new HttpHeaders({
-      Authorization: `Bearer ${localStorage.getItem('token') || ''}`
-    });
-  }
-
   loadRequests(): void {
-    this.loading = true;
-    this.errorMessage = '';
+    this.isLoading.set(true);
+    this.errorMessage.set('');
 
-    this.http.get<any>(this.apiUrl, {
-      headers: this.headers
-    }).subscribe({
-      next: (response) => {
-        this.requests = response.items ?? [];
-        this.loading = false;
+    this.service.getAll().subscribe({
+      next: response => {
+        this.requests.set(response.items);
+        this.isLoading.set(false);
       },
-      error: (error) => {
-        console.error(error);
-        this.errorMessage = 'Unable to load cancellation requests.';
-        this.loading = false;
-      }
+      error: (error: HttpErrorResponse) => {
+        this.errorMessage.set(
+          error.error?.detail || 'Unable to load cancellation requests.',
+        );
+        this.isLoading.set(false);
+      },
     });
   }
 
-  approveRequest(id: number): void {
-    if (!confirm('Are you sure you want to approve this cancellation?')) return;
+  updateRemarks(requestId: number, value: string): void {
+    this.adminRemarks.update(current => ({
+      ...current,
+      [requestId]: value,
+    }));
+  }
 
-    this.http.put(`${this.apiUrl}/${id}/approve`, {}, {
-      headers: this.headers
-    }).subscribe({
+  review(requestId: number, action: 'approve' | 'reject'): void {
+    this.processingId.set(requestId);
+    this.actionMessage.set('');
+    this.errorMessage.set('');
+
+    const payload = {
+      adminRemarks: this.adminRemarks()[requestId]?.trim() || null,
+    };
+
+    const request$ = action === 'approve'
+      ? this.service.approve(requestId, payload)
+      : this.service.reject(requestId, payload);
+
+    request$.subscribe({
       next: () => {
-        this.successMessage = 'Cancellation approved successfully.';
+        this.actionMessage.set(
+          action === 'approve'
+            ? 'Cancellation request approved.'
+            : 'Cancellation request rejected.',
+        );
+
+        this.processingId.set(null);
+
+        this.adminRemarks.update(current => {
+          const updated = { ...current };
+          delete updated[requestId];
+          return updated;
+        });
+
         this.loadRequests();
       },
-      error: (error) => {
-        console.error(error);
-        this.errorMessage = 'Unable to approve cancellation.';
-      }
+      error: (error: HttpErrorResponse) => {
+        this.errorMessage.set(
+          error.error?.detail || 'Unable to process this request.',
+        );
+        this.processingId.set(null);
+      },
     });
   }
 
-  rejectRequest(id: number): void {
-    if (!confirm('Are you sure you want to reject this cancellation?')) return;
-
-    this.http.put(`${this.apiUrl}/${id}/reject`, {}, {
-      headers: this.headers
-    }).subscribe({
-      next: () => {
-        this.successMessage = 'Cancellation rejected successfully.';
-        this.loadRequests();
-      },
-      error: (error) => {
-        console.error(error);
-        this.errorMessage = 'Unable to reject cancellation.';
-      }
-    });
+  statusLabel(status: number): string {
+    return status === 0 ? 'Pending' :
+      status === 1 ? 'Approved' : 'Rejected';
   }
 }

@@ -55,7 +55,7 @@ export const routes: Routes = [
         path: 'cancellation-requests',
         loadComponent: () =>
           import('./features/admin/cancellation-requests/cancellation-requests').then(
-            (m) => m.CancellationRequests,
+            (m) => m.AdminCancellationRequests,
           ),
       },
     ],
@@ -96,7 +96,7 @@ export const routes: Routes = [
         path: 'cancellation-requests',
         loadComponent: () =>
           import('./features/student/cancellation-requests/cancellation-requests').then(
-            (m) => m.AdminCancellationRequests,
+            (m) => m.CancellationRequests,
           ),
       },
       {

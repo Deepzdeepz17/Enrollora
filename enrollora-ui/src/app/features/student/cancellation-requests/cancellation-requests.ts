@@ -1,82 +1,169 @@
 
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { forkJoin } from 'rxjs';
+import { finalize } from 'rxjs/operators';
+
+import { EnrollmentService } from '../../enrollments/enrollment.service';
+import { EnrollmentResponse } from '../../enrollments/enrollment.models';
 
 import {
   CancellationRequestService,
+} from '../../enrollments/cancellation-req.service';
+
+import {
   CancellationResponse,
-} from '../../student/cancellation-requests/cancellation-request.service';
+} from '../../enrollments/cancellation-req.model';
 
 @Component({
-  selector: 'app-admin-cancellation-requests',
+  selector: 'app-cancellation-requests',
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './cancellation-requests.html',
+  styleUrl: './canvellation-req.css',
 })
-export class AdminCancellationRequests implements OnInit {
-  private cancellationService = inject(CancellationRequestService);
+export class CancellationRequests implements OnInit {
+  private readonly enrollmentService = inject(EnrollmentService);
+  private readonly cancellationService = inject(CancellationRequestService);
 
-  requests: CancellationResponse[] = [];
-  isLoading = false;
-  isReviewing = false;
-  errorMessage = '';
-  successMessage = '';
+  enrollments: EnrollmentResponse[] = [];
+
+  requests = signal<CancellationResponse[]>([]);
+  isLoading = signal(false);
+  isSubmitting = signal(false);
+  errorMessage = signal('');
+  successMessage = signal('');
+
+  selectedEnrollmentId: number | null = null;
+  reason = '';
 
   ngOnInit(): void {
     this.loadRequests();
   }
 
+  // Load active enrollments and cancellation request history.
   loadRequests(): void {
-    this.isLoading = true;
-    this.errorMessage = '';
+    this.isLoading.set(true);
+    this.errorMessage.set('');
 
-    this.cancellationService.getAllRequests(1, 100).subscribe({
-      next: (response) => {
-        this.requests = response.items;
-        this.isLoading = false;
-      },
-      error: (error) => {
-        console.error('Failed to load requests:', error);
-        this.errorMessage = 'Unable to load cancellation requests.';
-        this.isLoading = false;
-      },
-    });
-  }
-
-  reviewRequest(requestId: number, approve: boolean): void {
-    const action = approve ? 'approve' : 'reject';
-
-    const remarks = window.prompt(
-      `Enter admin remarks for ${action} (optional):`,
-    );
-
-    if (remarks === null) {
-      return;
-    }
-
-    this.isReviewing = true;
-    this.errorMessage = '';
-    this.successMessage = '';
-
-    this.cancellationService
-      .reviewRequest(requestId, approve, { adminRemarks: remarks })
+    forkJoin({
+      enrollmentResponse: this.enrollmentService.getMyEnrollments(1, 100),
+      requestResponse: this.cancellationService.getMine(1, 100),
+    })
+      .pipe(
+        finalize(() => {
+          this.isLoading.set(false);
+        })
+      )
       .subscribe({
-        next: () => {
-          this.successMessage = `Cancellation request ${action}d successfully.`;
-          this.isReviewing = false;
-          this.loadRequests();
+        next: (response) => {
+          // Backend enum: Active = 0, Cancelled = 1.
+          this.enrollments = (
+            response.enrollmentResponse.items ?? []
+          ).filter(
+            (enrollment: EnrollmentResponse) => enrollment.status === 0
+          );
+
+          this.requests.set(response.requestResponse.items ?? []);
         },
+
         error: (error) => {
-          console.error('Review failed:', error);
-          this.errorMessage =
-            error.error?.detail || 'Unable to review cancellation request.';
-          this.isReviewing = false;
+          console.error('Failed to load cancellation page:', error);
+
+          this.errorMessage.set(
+            error.error?.detail ||
+            error.error?.message ||
+            'Unable to load cancellation requests. Please refresh the page.'
+          );
         },
       });
   }
 
-  getStatus(status: number): string {
+  // Keep the previous method name available if another template uses it.
+  loadData(): void {
+    this.loadRequests();
+  }
+
+  // Check whether an enrollment already has a pending request.
+  hasPendingRequest(enrollmentId: number): boolean {
+    return this.requests().some(
+      (request) =>
+        request.enrollmentId === enrollmentId &&
+        request.status === 0
+    );
+  }
+
+  // Submit a cancellation request.
+  submitRequest(): void {
+    this.errorMessage.set('');
+    this.successMessage.set('');
+
+    if (this.selectedEnrollmentId === null) {
+      this.errorMessage.set('Please select a course.');
+      return;
+    }
+
+    if (!this.reason.trim()) {
+      this.errorMessage.set('Please enter a cancellation reason.');
+      return;
+    }
+
+    const enrollmentId = this.selectedEnrollmentId;
+
+    if (
+      !this.enrollments.some(
+        (enrollment) => enrollment.enrollmentId === enrollmentId
+      )
+    ) {
+      this.errorMessage.set('Please select a valid active enrollment.');
+      return;
+    }
+
+    if (this.hasPendingRequest(enrollmentId)) {
+      this.errorMessage.set(
+        'A pending cancellation request already exists for this course.'
+      );
+      return;
+    }
+
+    this.isSubmitting.set(true);
+
+    this.cancellationService
+      .create(enrollmentId, {
+        reason: this.reason.trim(),
+      })
+      .pipe(
+        finalize(() => {
+          this.isSubmitting.set(false);
+        })
+      )
+      .subscribe({
+        next: () => {
+          this.successMessage.set(
+            'Cancellation request submitted successfully.'
+          );
+
+          this.reason = '';
+          this.selectedEnrollmentId = null;
+
+          this.loadRequests();
+        },
+
+        error: (error) => {
+          console.error('Cancellation submission failed:', error);
+
+          this.errorMessage.set(
+            error.error?.detail ||
+            error.error?.message ||
+            'Unable to submit cancellation request.'
+          );
+        },
+      });
+  }
+
+  // Display request status.
+  statusLabel(status: number): string {
     switch (status) {
       case 0:
         return 'Pending';
@@ -87,5 +174,10 @@ export class AdminCancellationRequests implements OnInit {
       default:
         return 'Unknown';
     }
+  }
+
+  // Keep the previous method name available if needed.
+  getStatus(status: number): string {
+    return this.statusLabel(status);
   }
 }

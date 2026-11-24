@@ -1,79 +1,94 @@
-
-<div class="page-container">
-
+<div class="cancellation-page">
   <div class="page-header">
-    <div>
-      <h2>Cancellation Requests</h2>
-      <p>Review and manage student cancellation requests.</p>
+    <span class="eyebrow">ADMINISTRATION</span>
+    <h1>Cancellation Requests</h1>
+    <p>Review student requests and approve or reject cancellations.</p>
+  </div>
+
+  @if (actionMessage()) {
+    <div class="success-message">{{ actionMessage() }}</div>
+  }
+
+  @if (errorMessage()) {
+    <div class="error-message">{{ errorMessage() }}</div>
+  }
+
+  @if (isLoading()) {
+    <p>Loading cancellation requests...</p>
+  } @else if (requests().length === 0) {
+    <div class="empty-state">
+      <h3>No cancellation requests found</h3>
     </div>
-
-    <button class="refresh-btn" (click)="loadRequests()">
-      ↻ Refresh
-    </button>
-  </div>
-
-  <div *ngIf="successMessage" class="success">
-    {{ successMessage }}
-  </div>
-
-  <div *ngIf="errorMessage" class="error">
-    {{ errorMessage }}
-  </div>
-
-  <div class="table-container">
-
-    <div *ngIf="loading" class="message">
-      Loading cancellation requests...
+  } @else {
+    <div class="table-card">
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Course</th>
+              <th>Reason</th>
+              <th>Requested Date</th>
+              <th>Status</th>
+              <th>Admin Remarks</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (request of requests(); track request.cancellationRequestId) {
+              <tr>
+                <td>
+                  <strong>{{ request.studentName }}</strong>
+                  <small>{{ request.studentEmail }}</small>
+                </td>
+                <td>{{ request.courseName }}</td>
+                <td>{{ request.reason }}</td>
+                <td>{{ request.requestedAt | date:'dd MMM yyyy' }}</td>
+                <td>
+                  <span class="status-badge"
+                    [class.pending]="request.status === 0"
+                    [class.approved]="request.status === 1"
+                    [class.rejected]="request.status === 2">
+                    {{ statusLabel(request.status) }}
+                  </span>
+                </td>
+                <td>
+                  @if (request.status === 0) {
+                    <textarea
+                      rows="2"
+                      placeholder="Optional remarks"
+                     [value]="adminRemarks()[request.cancellationRequestId] || ''"
+(input)="updateRemarks(request.cancellationRequestId, $any($event.target).value)"
+                    ></textarea>
+                  } @else {
+                    {{ request.adminRemarks || '-' }}
+                  }
+                </td>
+                <td>
+                  @if (request.status === 0) {
+                    <div class="action-buttons">
+                      <button
+                        class="approve-btn"
+                        [disabled]="processingId() !== null"
+                        (click)="review(request.cancellationRequestId, 'approve')">
+                        {{ processingId() === request.cancellationRequestId ? 'Processing...' : 'Approve' }}
+                      </button>
+                      <button
+                        class="reject-btn"
+                        [disabled]="processingId() !== null"
+                        (click)="review(request.cancellationRequestId, 'reject')">
+                        Reject
+                      </button>
+                    </div>
+                  } @else {
+                    <span>Reviewed</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
     </div>
-
-    <table *ngIf="!loading && requests.length > 0">
-      <thead>
-        <tr>
-          <th>Student</th>
-          <th>Course</th>
-          <th>Reason</th>
-          <th>Status</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-
-      <tbody>
-        <tr *ngFor="let request of requests">
-          <td>{{ request.studentName }}</td>
-          <td>{{ request.courseName }}</td>
-          <td>{{ request.reason }}</td>
-
-          <td>
-            <span class="status">
-              {{ request.status }}
-            </span>
-          </td>
-
-          <td>
-            <ng-container *ngIf="request.status === 'Pending'; else completed">
-              <button class="approve-btn"
-                (click)="approveRequest(request.cancellationRequestId)">
-                Approve
-              </button>
-
-              <button class="reject-btn"
-                (click)="rejectRequest(request.cancellationRequestId)">
-                Reject
-              </button>
-            </ng-container>
-
-            <ng-template #completed>
-              <span>Reviewed</span>
-            </ng-template>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-
-    <div *ngIf="!loading && requests.length === 0 && !errorMessage"
-         class="message">
-      No cancellation requests found.
-    </div>
-
-  </div>
+  }
 </div>
